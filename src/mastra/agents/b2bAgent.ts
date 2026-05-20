@@ -22,6 +22,14 @@ const mcp = new MCPClient({
       command: 'npx',
       args: ['tsx', path.join(projectRoot, 'src/mcp-servers/clay.ts')],
     },
+    tavily: {
+      url: new URL('https://mcp.tavily.com/mcp/'),
+      requestInit: {
+        headers: {
+          Authorization: `Bearer ${process.env.TAVILY_API_KEY ?? ''}`,
+        },
+      },
+    },
   },
 });
 
@@ -32,7 +40,7 @@ const memory = new Memory({
 export const b2bAgent = new Agent({
   id: 'b2b-agent',
   name: 'B2B Sales Intelligence Agent',
-  instructions: `You are a B2B sales intelligence assistant. You help sales teams research companies, enrich leads, find contacts, and craft outreach using ZoomInfo and Clay data. Be concise and structured in your responses.`,
+  instructions: `You are a B2B sales intelligence assistant. You help sales teams research companies, enrich leads, find contacts, and craft outreach using ZoomInfo and Clay data. You can also use Tavily to search the web for real-time information (recent news, funding announcements, hiring signals, public company updates) when the internal data sources are insufficient or when the user asks about current events. Be concise and structured in your responses.`,
   model: google('gemini-2.0-flash'),
   tools: await mcp.listTools(),
   memory,
