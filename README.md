@@ -58,19 +58,21 @@ The agent reads its Tavily token from the store at the moment it makes a request
 
 Run the test suites with `npm run test:auth` (store), `npm run test:tavily-auth` (resolver), and `npm run test:oauth-flow` (OAuth helper end-to-end).
 
-## OAuth helper (Phase 3 plumbing)
+## OAuth helper
 
-A small Hono server at `http://localhost:3000` handles OAuth flows for any provider registered in `src/auth/providers.ts`. Phase 3 ships the plumbing only — provider entries (Notion etc.) are added in Phase 4.
+A small Hono server at `http://localhost:3000` handles OAuth flows for any provider registered in `src/auth/providers.ts`. **Notion** is registered out of the box (Phase 4) — others can be added by the same `registerProvider({...})` pattern.
 
 ```shell
 # In one terminal: start the OAuth callback server (binds to 127.0.0.1)
 npm run oauth:serve
 
-# In another terminal: open the connect URL in your browser
-npm run connect -- --provider <name> [--user <userId>]
+# In another terminal: connect a provider — opens your browser to its consent screen
+npm run connect -- --provider notion [--user <userId>]
 ```
 
-The server implements `GET /oauth/:provider/connect` (PKCE + state JWT + optional Dynamic Client Registration → 302 to the provider's authorize endpoint) and `GET /oauth/:provider/callback` (verify state, exchange code+verifier for tokens, persist via the credential store).
+The server implements `GET /oauth/:provider/connect` (PKCE + state JWT + Dynamic Client Registration where supported → 302 to the provider's authorize endpoint) and `GET /oauth/:provider/callback` (verify state, exchange code+verifier for tokens, persist via the credential store as `kind=oauth`).
+
+Until Phase 5 lands automatic refresh, an expired OAuth token surfaces as an `ExpiredCredentialError` with a clear `npm run connect -- --provider X` hint.
 
 ## Learn more
 

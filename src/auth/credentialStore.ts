@@ -47,10 +47,11 @@ export class CredentialAuthError extends Error {
 export class MissingCredentialError extends Error {
   readonly provider: string;
   readonly userId: string;
-  constructor(provider: string, userId: string) {
+  constructor(provider: string, userId: string, hintCommand?: string) {
+    const defaultHint = `npm run set-credential -- --user ${userId} --provider ${provider} --kind api_key --token <token>`;
     super(
       `No credential for provider="${provider}" user="${userId}". ` +
-        `Run:  npm run set-credential -- --user ${userId} --provider ${provider} --kind api_key --token <token>`,
+        `Run:  ${hintCommand ?? defaultHint}`,
     );
     this.name = 'MissingCredentialError';
     this.provider = provider;

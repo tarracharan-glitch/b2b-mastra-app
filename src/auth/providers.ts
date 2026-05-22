@@ -35,3 +35,15 @@ export function listProviders(): OAuthProvider[] {
 export function __resetRegistryForTests(): void {
   registry.clear();
 }
+
+// ── Built-in providers ──────────────────────────────────────────────────────
+// Side-effect registration at module load. Endpoints are intentionally left
+// blank — discovery fills them in at /connect time, so this stays correct
+// if Notion changes URLs.
+registerProvider({
+  name: 'notion',
+  discoveryUrl: 'https://mcp.notion.com/.well-known/oauth-authorization-server',
+  scopes: [],
+  usesPkce: true,
+  usesDcr: true,
+});
