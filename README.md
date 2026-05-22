@@ -4,7 +4,7 @@ Welcome to your new [Mastra](https://mastra.ai/) project! We're excited to see w
 
 ## Getting Started
 
-Start the development server:
+Set the required environment variables in `.env` (see **Environment** below), then start the development server:
 
 ```shell
 npm run dev
@@ -13,6 +13,26 @@ npm run dev
 Open [http://localhost:4111](http://localhost:4111) in your browser to access [Mastra Studio](https://mastra.ai/docs/studio/overview). It provides an interactive UI for building and testing your agents, along with a REST API that exposes your Mastra application as a local service. This lets you start building without worrying about integration right away.
 
 You can start editing files inside the `src/mastra` directory. The development server will automatically reload whenever you make changes.
+
+## Environment
+
+```
+GOOGLE_GENERATIVE_AI_API_KEY=...     # model auth
+TAVILY_API_KEY=...                   # bootstrapped into auth.db on first run (Phase 2 will read from DB instead)
+TOKEN_ENCRYPTION_KEY=...             # AES-256 key for the credential store; required
+```
+
+Generate `TOKEN_ENCRYPTION_KEY` once and reuse — losing it makes every stored credential unrecoverable:
+
+```shell
+openssl rand -base64 32
+```
+
+## Credential store
+
+Provider secrets (Tavily API key today, OAuth tokens in later phases) live in a dedicated `auth.db` SQLite file (LibSQL), separate from `memory.db` so the auth surface is isolated. Rows are AES-256-GCM encrypted with `TOKEN_ENCRYPTION_KEY` and bound by AAD `${userId}:${provider}`, so ciphertexts can't be replayed across users.
+
+Run the credential-store test suite with `npm run test:auth`.
 
 ## Learn more
 
