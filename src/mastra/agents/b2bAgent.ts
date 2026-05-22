@@ -1,27 +1,12 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { google } from '@ai-sdk/google';
 import { MCPClient } from '@mastra/mcp';
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
 
-// mastra dev bundles this file into .mastra/output/index.mjs and runs it with
-// cwd set to src/mastra/public/. import.meta.url reliably points to the bundle
-// file at <project>/.mastra/output/index.mjs, so "../.." gives the project root.
-const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-
 const mcp = new MCPClient({
   id: 'b2b-mcp-client',
   servers: {
-    zoominfo: {
-      command: 'npx',
-      args: ['tsx', path.join(projectRoot, 'src/mcp-servers/zoominfo.ts')],
-    },
-    clay: {
-      command: 'npx',
-      args: ['tsx', path.join(projectRoot, 'src/mcp-servers/clay.ts')],
-    },
     tavily: {
       url: new URL('https://mcp.tavily.com/mcp/'),
       requestInit: {
@@ -40,7 +25,7 @@ const memory = new Memory({
 export const b2bAgent = new Agent({
   id: 'b2b-agent',
   name: 'B2B Sales Intelligence Agent',
-  instructions: `You are a B2B sales intelligence assistant. You help sales teams research companies, enrich leads, find contacts, and craft outreach using ZoomInfo and Clay data. You can also use Tavily to search the web for real-time information (recent news, funding announcements, hiring signals, public company updates) when the internal data sources are insufficient or when the user asks about current events. Be concise and structured in your responses.`,
+  instructions: `You are a B2B sales intelligence assistant. You help sales teams research companies, surface recent news, funding rounds, hiring signals, and public updates, and draft outreach. Use Tavily to search the web for real-time information. Be concise and structured in your responses.`,
   model: google('gemini-2.0-flash'),
   tools: await mcp.listTools(),
   memory,
