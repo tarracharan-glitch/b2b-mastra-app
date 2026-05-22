@@ -4,13 +4,20 @@ Welcome to your new [Mastra](https://mastra.ai/) project! We're excited to see w
 
 ## Getting Started
 
-Set the required environment variables in `.env` (see **Environment** below), then start the development server:
+1. Put model auth and the credential-store key in `.env` (see **Environment**).
+2. Add your Tavily key to the credential store:
 
-```shell
-npm run dev
-```
+   ```shell
+   npm run set-credential -- --user default --provider tavily --kind api_key --token tvly-...
+   ```
 
-Open [http://localhost:4111](http://localhost:4111) in your browser to access [Mastra Studio](https://mastra.ai/docs/studio/overview). It provides an interactive UI for building and testing your agents, along with a REST API that exposes your Mastra application as a local service. This lets you start building without worrying about integration right away.
+3. Start the dev server:
+
+   ```shell
+   npm run dev
+   ```
+
+Open [http://localhost:4111](http://localhost:4111) for [Mastra Studio](https://mastra.ai/docs/studio/overview) — an interactive UI for building and testing agents plus a REST API at `/api`.
 
 You can start editing files inside the `src/mastra` directory. The development server will automatically reload whenever you make changes.
 
@@ -18,8 +25,9 @@ You can start editing files inside the `src/mastra` directory. The development s
 
 ```
 GOOGLE_GENERATIVE_AI_API_KEY=...     # model auth
-TAVILY_API_KEY=...                   # bootstrapped into auth.db on first run (Phase 2 will read from DB instead)
 TOKEN_ENCRYPTION_KEY=...             # AES-256 key for the credential store; required
+TAVILY_API_KEY=...                   # (optional) one-time bootstrap — migrated into auth.db on first run, then ignored
+USER_ID=...                          # (optional) defaults to "default"; selects which row in auth.db the agent reads
 ```
 
 Generate `TOKEN_ENCRYPTION_KEY` once and reuse — losing it makes every stored credential unrecoverable:
@@ -30,9 +38,22 @@ openssl rand -base64 32
 
 ## Credential store
 
-Provider secrets (Tavily API key today, OAuth tokens in later phases) live in a dedicated `auth.db` SQLite file (LibSQL), separate from `memory.db` so the auth surface is isolated. Rows are AES-256-GCM encrypted with `TOKEN_ENCRYPTION_KEY` and bound by AAD `${userId}:${provider}`, so ciphertexts can't be replayed across users.
+Provider secrets (Tavily today, OAuth tokens in later phases) live in a dedicated `auth.db` SQLite file (LibSQL), separate from `memory.db` so the auth surface is isolated. Rows are AES-256-GCM encrypted with `TOKEN_ENCRYPTION_KEY` and bound by AAD `${userId}:${provider}`, so ciphertexts can't be replayed across users.
 
-Run the credential-store test suite with `npm run test:auth`.
+Manage credentials with the CLI:
+
+```shell
+# Add or overwrite a credential
+npm run set-credential -- --user default --provider tavily --kind api_key --token tvly-...
+
+# OAuth-style row with refresh and expiry
+npm run set-credential -- --user default --provider notion --kind oauth \
+  --token ntn_access_... --refresh ntn_refresh_... --expires-in 3600 --scope "read write"
+```
+
+The agent reads its Tavily token from the store at the moment it makes a request — so rotating with `set-credential` takes effect on the next chat turn, no restart needed. `USER_ID` env var selects which row the agent uses.
+
+Run the test suites with `npm run test:auth` (store) and `npm run test:tavily-auth` (resolver).
 
 ## Learn more
 

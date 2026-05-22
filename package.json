@@ -6,6 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:auth": "node scripts/test-credential-store.ts",
+    "test:tavily-auth": "node scripts/test-tavily-auth.ts",
+    "set-credential": "node --env-file=.env scripts/set-credential.ts",
     "dev": "mastra dev",
     "build": "mastra build",
     "start": "mastra start"

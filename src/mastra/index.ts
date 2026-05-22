@@ -8,9 +8,9 @@ import { Observability, MastraStorageExporter, MastraPlatformExporter, Sensitive
 import { weatherWorkflow } from './workflows/weather-workflow';
 import { weatherAgent } from './agents/weather-agent';
 import { b2bAgent } from './agents/b2bAgent';
-import { bootstrapFromEnv } from '../auth/credentialStore';
-
-await bootstrapFromEnv();
+// Bootstrap (env -> credential store) is run lazily from src/auth/resolveTavilyAuth
+// on the first credential read, because the dev bundler reorders top-level
+// awaits across modules and a side-effect import here is not reliable.
 
 
 export const mastra = new Mastra({
