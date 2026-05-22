@@ -7,7 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:auth": "node scripts/test-credential-store.ts",
     "test:tavily-auth": "node scripts/test-tavily-auth.ts",
+    "test:oauth-flow": "node scripts/test-oauth-flow.ts",
     "set-credential": "node --env-file=.env scripts/set-credential.ts",
+    "oauth:serve": "node --env-file=.env scripts/oauth-serve.ts",
+    "connect": "node --env-file=.env scripts/connect.ts",
     "dev": "mastra dev",
     "build": "mastra build",
     "start": "mastra start"
@@ -21,6 +24,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.75",
+    "@hono/node-server": "^1.19.14",
     "@libsql/client": "^0.15.15",
     "@mastra/core": "^1.35.0",
     "@mastra/duckdb": "^1.3.2",
@@ -29,6 +33,8 @@
     "@mastra/mcp": "^1.7.0",
     "@mastra/memory": "^1.18.2",
     "@mastra/observability": "^1.12.0",
+    "hono": "^4.12.19",
+    "open": "^10.1.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {

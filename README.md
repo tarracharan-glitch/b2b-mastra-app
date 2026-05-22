@@ -26,14 +26,17 @@ You can start editing files inside the `src/mastra` directory. The development s
 ```
 GOOGLE_GENERATIVE_AI_API_KEY=...     # model auth
 TOKEN_ENCRYPTION_KEY=...             # AES-256 key for the credential store; required
+OAUTH_STATE_SECRET=...               # HMAC key for the OAuth state JWT; ≥32 chars, required for OAuth flows
+OAUTH_REDIRECT_BASE_URL=...          # (optional) defaults to http://localhost:3000; override when proxying through ngrok
 TAVILY_API_KEY=...                   # (optional) one-time bootstrap — migrated into auth.db on first run, then ignored
 USER_ID=...                          # (optional) defaults to "default"; selects which row in auth.db the agent reads
 ```
 
-Generate `TOKEN_ENCRYPTION_KEY` once and reuse — losing it makes every stored credential unrecoverable:
+Generate the two secrets once and reuse — losing `TOKEN_ENCRYPTION_KEY` makes every stored credential unrecoverable:
 
 ```shell
-openssl rand -base64 32
+openssl rand -base64 32   # for TOKEN_ENCRYPTION_KEY
+openssl rand -base64 48   # for OAUTH_STATE_SECRET
 ```
 
 ## Credential store
@@ -53,7 +56,21 @@ npm run set-credential -- --user default --provider notion --kind oauth \
 
 The agent reads its Tavily token from the store at the moment it makes a request — so rotating with `set-credential` takes effect on the next chat turn, no restart needed. `USER_ID` env var selects which row the agent uses.
 
-Run the test suites with `npm run test:auth` (store) and `npm run test:tavily-auth` (resolver).
+Run the test suites with `npm run test:auth` (store), `npm run test:tavily-auth` (resolver), and `npm run test:oauth-flow` (OAuth helper end-to-end).
+
+## OAuth helper (Phase 3 plumbing)
+
+A small Hono server at `http://localhost:3000` handles OAuth flows for any provider registered in `src/auth/providers.ts`. Phase 3 ships the plumbing only — provider entries (Notion etc.) are added in Phase 4.
+
+```shell
+# In one terminal: start the OAuth callback server (binds to 127.0.0.1)
+npm run oauth:serve
+
+# In another terminal: open the connect URL in your browser
+npm run connect -- --provider <name> [--user <userId>]
+```
+
+The server implements `GET /oauth/:provider/connect` (PKCE + state JWT + optional Dynamic Client Registration → 302 to the provider's authorize endpoint) and `GET /oauth/:provider/callback` (verify state, exchange code+verifier for tokens, persist via the credential store).
 
 ## Learn more
 

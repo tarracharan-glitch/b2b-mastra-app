@@ -1,8 +1,6 @@
 import { createClient, type Client } from '@libsql/client';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
-import { existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { defaultAuthDbUrl } from './projectRoot.ts';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
@@ -267,32 +265,12 @@ export function loadEncryptionKey(): Buffer {
   return decoded;
 }
 
-function findProjectRoot(startDir: string): string {
-  // tsconfig.json sits at the real project root and is not emitted into
-  // .mastra/output/ during bundling, so walking up until we find it is more
-  // reliable than looking for package.json (which the bundler creates inside
-  // its output directory).
-  let dir = startDir;
-  while (true) {
-    if (existsSync(join(dir, 'tsconfig.json'))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) return process.cwd();
-    dir = parent;
-  }
-}
-
-function defaultDbUrl(): string {
-  if (process.env.AUTH_DB_URL) return process.env.AUTH_DB_URL;
-  const root = findProjectRoot(dirname(fileURLToPath(import.meta.url)));
-  return `file:${join(root, 'auth.db')}`;
-}
-
 let defaultStore: CredentialStore | null = null;
 
 export function getDefaultCredentialStore(): CredentialStore {
   if (!defaultStore) {
     defaultStore = new CredentialStore({
-      dbUrl: defaultDbUrl(),
+      dbUrl: defaultAuthDbUrl(import.meta.url),
       encryptionKey: loadEncryptionKey(),
     });
   }
