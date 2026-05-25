@@ -43,7 +43,7 @@ export async function ensureRegisteredClient(
     token_endpoint_auth_method: 'none',
     grant_types: ['authorization_code', 'refresh_token'],
     response_types: ['code'],
-    scope: provider.scopes.length ? provider.scopes.join(' ') : undefined,
+    scope: provider.scopes && provider.scopes.length ? provider.scopes.join(' ') : undefined,
   };
 
   const res = await fetch(provider.registrationEndpoint, {

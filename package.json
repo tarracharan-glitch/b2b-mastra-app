@@ -10,6 +10,7 @@
     "test:oauth-flow": "node scripts/test-oauth-flow.ts",
     "test:resolve-oauth": "node scripts/test-resolve-oauth.ts",
     "test:refresh-disconnect": "node scripts/test-refresh-and-disconnect.ts",
+    "test:admin-ui": "node scripts/test-admin-ui.ts",
     "set-credential": "node --env-file=.env scripts/set-credential.ts",
     "credentials": "node --env-file=.env scripts/credentials.ts",
     "oauth:serve": "node --env-file=.env scripts/oauth-serve.ts",

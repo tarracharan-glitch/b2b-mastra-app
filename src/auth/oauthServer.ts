@@ -1,4 +1,5 @@
 import { Hono, type Context } from 'hono';
+import { mountAdminRoutes } from './adminUi.ts';
 import { setCredential } from './credentialStore.ts';
 import { ensureRegisteredClient } from './dcr.ts';
 import { resolveProvider } from './discovery.ts';
@@ -85,9 +86,12 @@ export function createOAuthApp(opts: CreateAppOptions = {}): Hono {
   const baseUrlOverride = opts.redirectBaseUrl;
   const getBase = (): string => baseUrlOverride ?? redirectBase();
 
+  mountAdminRoutes(app);
+
   app.get('/oauth/:provider/connect', async (c) => {
     const name = c.req.param('provider');
     const userId = c.req.query('user') ?? 'default';
+    const from = c.req.query('from'); // 'admin' threads through to /callback
 
     const baseProvider = getProvider(name);
     if (!baseProvider) return htmlError(c, 404, `unknown provider "${name}"`);
@@ -112,17 +116,19 @@ export function createOAuthApp(opts: CreateAppOptions = {}): Hono {
     }
 
     const { verifier, challenge, method } = generatePkcePair();
-    const state = signStateJwt({ sub: userId, provider: name });
+    const ext = from === 'admin' ? { from: 'admin' } : undefined;
+    const state = signStateJwt({ sub: userId, provider: name, ext });
     const jti = unsafeJtiFromJwt(state);
     if (!jti) return htmlError(c, 500, 'failed to extract jti from signed state');
     stashVerifier(jti, verifier);
 
+    const scopes = provider.scopes ?? [];
     const authUrl = new URL(provider.authorizationEndpoint);
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('client_id', clientRecord.clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('state', state);
-    if (provider.scopes.length) authUrl.searchParams.set('scope', provider.scopes.join(' '));
+    if (scopes.length) authUrl.searchParams.set('scope', scopes.join(' '));
     authUrl.searchParams.set('code_challenge', challenge);
     authUrl.searchParams.set('code_challenge_method', method);
 
@@ -226,6 +232,15 @@ export function createOAuthApp(opts: CreateAppOptions = {}): Hono {
       scope: tokens.scope,
       metadata: tokens.token_type ? { tokenType: tokens.token_type } : undefined,
     });
+
+    // If the original /connect was initiated from /admin, redirect back to
+    // /admin with a flash instead of rendering the standalone success page.
+    if (claims.ext && (claims.ext as Record<string, unknown>).from === 'admin') {
+      const adminUrl = new URL(`${getBase()}/admin`);
+      adminUrl.searchParams.set('user', claims.sub);
+      adminUrl.searchParams.set('flash', `connected:${name}`);
+      return c.redirect(adminUrl.toString(), 303);
+    }
 
     return htmlSuccess(c, name);
   });

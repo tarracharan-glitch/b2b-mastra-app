@@ -106,6 +106,12 @@ npm run disconnect -- --provider notion [--user <userId>]
 - **Retry on 401.** Every MCP request is wrapped in `authedFetch`: if the server returns 401, the resolver force-refreshes once and retries. Useful when the provider invalidates a token earlier than the stated expiry.
 - **Hard failures surface cleanly.** `RefreshFailedError` (4xx from the token endpoint → row deleted) and `CannotRefreshError` (no `refresh_token` to use) both carry `npm run connect -- --provider X --user Y` as the actionable hint.
 
+## Admin UI
+
+A server-rendered web page at `http://localhost:3000/admin` (served by the same Hono app as `/oauth`) lists every provider in `src/auth/providers.ts`, shows its connection state with an expiry countdown, and offers **Connect / Refresh / Disconnect** buttons. OAuth providers click straight through to the existing `/oauth/<p>/connect` flow (the callback redirects back to `/admin` instead of the standalone success page); API-key providers get an inline form. Forms are real `<form method="POST">` elements — no JavaScript required.
+
+**Security note: do not expose.** The admin server binds to `127.0.0.1` and has no authentication — anyone who can reach the port can revoke your tokens. Don't proxy it through ngrok or open the port. Every form carries an HMAC-signed CSRF token bound to `(userId, formId, minute)`; tokens older than 10 minutes are rejected with a "session expired" page. Token material is never rendered into HTML.
+
 ### About `TOKEN_ENCRYPTION_KEY`
 
 This single env var is the master key for every row in `auth.db`. **If you lose it, every stored credential is unrecoverable** — `getCredential` will throw `CredentialAuthError` because GCM authentication tags won't validate. There is no recovery path other than deleting `auth.db` and reconnecting every provider. Rotate it intentionally (re-encrypt all rows) or treat it as immutable per environment.
