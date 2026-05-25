@@ -11,6 +11,7 @@
     "test:resolve-oauth": "node scripts/test-resolve-oauth.ts",
     "test:refresh-disconnect": "node scripts/test-refresh-and-disconnect.ts",
     "set-credential": "node --env-file=.env scripts/set-credential.ts",
+    "credentials": "node --env-file=.env scripts/credentials.ts",
     "oauth:serve": "node --env-file=.env scripts/oauth-serve.ts",
     "connect": "node --env-file=.env scripts/connect.ts",
     "disconnect": "node --env-file=.env scripts/disconnect.ts",

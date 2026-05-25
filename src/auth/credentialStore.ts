@@ -297,19 +297,3 @@ export async function deleteCredential(userId: string, provider: string): Promis
 export async function listProviders(userId: string): Promise<string[]> {
   return getDefaultCredentialStore().listProviders(userId);
 }
-
-export async function bootstrapFromEnv(): Promise<void> {
-  // Eagerly construct the store so a missing/invalid TOKEN_ENCRYPTION_KEY
-  // fails at boot rather than on the first chat turn.
-  const store = getDefaultCredentialStore();
-
-  if (!process.env.TAVILY_API_KEY) return;
-  const existing = await store.getCredential('default', 'tavily');
-  if (existing) return;
-
-  await store.setCredential('default', 'tavily', {
-    kind: 'api_key',
-    accessToken: process.env.TAVILY_API_KEY,
-  });
-  console.log('[auth] migrated TAVILY_API_KEY into credential store');
-}

@@ -4,14 +4,21 @@ Welcome to your new [Mastra](https://mastra.ai/) project! We're excited to see w
 
 ## Getting Started
 
-1. Put model auth and the credential-store key in `.env` (see **Environment**).
-2. Add your Tavily key to the credential store:
+1. Put the three required env vars in `.env` (see **Environment**). The dev server refuses to boot if any are missing, and prints exactly what's wrong.
+2. Add your Tavily key to the credential store (this is the only way — there is no env-var fallback):
 
    ```shell
    npm run set-credential -- --user default --provider tavily --kind api_key --token tvly-...
    ```
 
-3. Start the dev server:
+3. (Optional, for Notion) start the OAuth helper and run the connect flow:
+
+   ```shell
+   npm run oauth:serve                                          # terminal 1
+   npm run connect -- --provider notion --user default          # terminal 2
+   ```
+
+4. Start the dev server:
 
    ```shell
    npm run dev
@@ -23,21 +30,29 @@ You can start editing files inside the `src/mastra` directory. The development s
 
 ## Environment
 
+Required:
+
 ```
-GOOGLE_GENERATIVE_AI_API_KEY=...     # model auth
-TOKEN_ENCRYPTION_KEY=...             # AES-256 key for the credential store; required
-OAUTH_STATE_SECRET=...               # HMAC key for the OAuth state JWT; ≥32 chars, required for OAuth flows
-OAUTH_REDIRECT_BASE_URL=...          # (optional) defaults to http://localhost:3000; override when proxying through ngrok
-TAVILY_API_KEY=...                   # (optional) one-time bootstrap — migrated into auth.db on first run, then ignored
-USER_ID=...                          # (optional) defaults to "default"; selects which row in auth.db the agent reads
+GOOGLE_GENERATIVE_AI_API_KEY=...     # model auth — https://aistudio.google.com/app/apikey
+TOKEN_ENCRYPTION_KEY=...             # AES-256 key for auth.db rows
+OAUTH_STATE_SECRET=...               # HMAC key for OAuth state JWTs; ≥32 chars
 ```
 
-Generate the two secrets once and reuse — losing `TOKEN_ENCRYPTION_KEY` makes every stored credential unrecoverable:
+Optional:
+
+```
+OAUTH_REDIRECT_BASE_URL=...          # defaults to http://localhost:3000; override when proxying through ngrok
+USER_ID=...                          # defaults to "default"; selects which row in auth.db the agent reads
+```
+
+Generate the two secrets once and reuse:
 
 ```shell
 openssl rand -base64 32   # for TOKEN_ENCRYPTION_KEY
 openssl rand -base64 48   # for OAUTH_STATE_SECRET
 ```
+
+**Provider tokens never go in `.env`.** Tavily API keys live in the credential store (`npm run set-credential`); Notion (and any future OAuth provider) lives there too (`npm run connect`).
 
 ## Credential store
 
@@ -49,14 +64,26 @@ Manage credentials with the CLI:
 # Add or overwrite a credential
 npm run set-credential -- --user default --provider tavily --kind api_key --token tvly-...
 
-# OAuth-style row with refresh and expiry
+# OAuth-style row (normally written by the OAuth callback; useful for tests)
 npm run set-credential -- --user default --provider notion --kind oauth \
   --token ntn_access_... --refresh ntn_refresh_... --expires-in 3600 --scope "read write"
+
+# Audit what's stored — tokens are never printed
+npm run credentials                           # all users
+npm run credentials -- --user default         # filter
 ```
 
-The agent reads its Tavily token from the store at the moment it makes a request — so rotating with `set-credential` takes effect on the next chat turn, no restart needed. `USER_ID` env var selects which row the agent uses.
+The agent reads its credentials from the store at the moment it makes a request — rotating with `set-credential` takes effect on the next chat turn, no restart needed. `USER_ID` env var selects which row the agent uses.
 
-Run the test suites with `npm run test:auth` (store), `npm run test:tavily-auth` (resolver), and `npm run test:oauth-flow` (OAuth helper end-to-end).
+Run all test suites:
+
+```shell
+npm run test:auth                   # encryption / AAD / missing key
+npm run test:tavily-auth            # Tavily header resolver
+npm run test:resolve-oauth          # OAuth resolver (no row, expired, tampered)
+npm run test:oauth-flow             # /connect + /callback end-to-end
+npm run test:refresh-disconnect     # refresh, retry-on-401, disconnect
+```
 
 ## OAuth helper
 

@@ -1,16 +1,18 @@
-
 import { Mastra } from '@mastra/core/mastra';
 import { PinoLogger } from '@mastra/loggers';
 import { LibSQLStore } from '@mastra/libsql';
 import { DuckDBStore } from "@mastra/duckdb";
 import { MastraCompositeStore } from '@mastra/core/storage';
 import { Observability, MastraStorageExporter, MastraPlatformExporter, SensitiveDataFilter } from '@mastra/observability';
+import { validateEnvOrExit } from '../auth/validateEnv.ts';
 import { weatherWorkflow } from './workflows/weather-workflow';
 import { weatherAgent } from './agents/weather-agent';
 import { b2bAgent } from './agents/b2bAgent';
-// Bootstrap (env -> credential store) is run lazily from src/auth/resolveTavilyAuth
-// on the first credential read, because the dev bundler reorders top-level
-// awaits across modules and a side-effect import here is not reliable.
+
+// Eagerly fail with a single combined report if any required env var is
+// missing or malformed, rather than letting the failure surface piecemeal
+// from inside the credential store or the model client.
+validateEnvOrExit();
 
 
 export const mastra = new Mastra({
