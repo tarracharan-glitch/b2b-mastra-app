@@ -8,9 +8,11 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "outDir": "dist"
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "scripts/**/*"
   ]
 }
