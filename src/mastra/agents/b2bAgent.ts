@@ -3,6 +3,7 @@ import { MCPClient } from '@mastra/mcp';
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
+import { authedFetch } from '../../auth/authedFetch.ts';
 import { getTavilyAuthHeader } from '../../auth/resolveTavilyAuth.ts';
 import { getOAuthAuthHeader } from '../../auth/resolveOAuthAuth.ts';
 
@@ -13,19 +14,21 @@ const mcp = new MCPClient({
   servers: {
     tavily: {
       url: new URL('https://mcp.tavily.com/mcp/'),
-      fetch: async (url, init) => {
-        const headers = new Headers(init?.headers);
-        headers.set('Authorization', await getTavilyAuthHeader(USER_ID));
-        return fetch(url, { ...init, headers });
-      },
+      // Tavily is an API key — no OAuth refresh available, but re-reading from
+      // the DB on 401 lets a rotated key take effect without restart.
+      fetch: authedFetch({
+        getHeader: () => getTavilyAuthHeader(USER_ID),
+        refreshHeader: () => getTavilyAuthHeader(USER_ID),
+      }),
     },
     notion: {
       url: new URL('https://mcp.notion.com/mcp'),
-      fetch: async (url, init) => {
-        const headers = new Headers(init?.headers);
-        headers.set('Authorization', await getOAuthAuthHeader(USER_ID, 'notion'));
-        return fetch(url, { ...init, headers });
-      },
+      // Notion is OAuth — getHeader refreshes when within the expiry cushion,
+      // refreshHeader forces a refresh in response to a 401.
+      fetch: authedFetch({
+        getHeader: () => getOAuthAuthHeader(USER_ID, 'notion'),
+        refreshHeader: () => getOAuthAuthHeader(USER_ID, 'notion', { force: true }),
+      }),
     },
   },
 });

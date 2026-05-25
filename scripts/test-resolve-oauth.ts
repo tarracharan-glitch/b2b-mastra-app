@@ -10,7 +10,7 @@ process.env.TOKEN_ENCRYPTION_KEY = randomBytes(32).toString('base64');
 const { setCredential, MissingCredentialError, CredentialAuthError } = await import(
   '../src/auth/credentialStore.ts'
 );
-const { getOAuthAuthHeader, ExpiredCredentialError } = await import('../src/auth/resolveOAuthAuth.ts');
+const { getOAuthAuthHeader } = await import('../src/auth/resolveOAuthAuth.ts');
 const { createClient } = await import('@libsql/client');
 
 let passed = 0;
@@ -35,7 +35,7 @@ function assert(cond: unknown, msg: string): asserts cond {
 try {
   console.log('resolveOAuthAuth tests');
 
-  await test('valid OAuth row with future expiry -> Bearer header', async () => {
+  await test('valid OAuth row with future expiry -> Bearer header (no refresh)', async () => {
     await setCredential('alice', 'notion', {
       kind: 'oauth',
       accessToken: 'ntn-access-1',
@@ -47,7 +47,7 @@ try {
     assert(header === 'Bearer ntn-access-1', `got: ${header}`);
   });
 
-  await test('valid OAuth row with no expiry -> Bearer header (treated as long-lived)', async () => {
+  await test('valid OAuth row with no expiry -> Bearer header (long-lived)', async () => {
     await setCredential('alice2', 'notion', {
       kind: 'oauth',
       accessToken: 'ntn-access-noexp',
@@ -75,7 +75,6 @@ try {
       accessToken: 'will-be-corrupted',
       expiresAt: Math.floor(Date.now() / 1000) + 3600,
     });
-    // Flip a byte in access_ciphertext directly in the DB.
     const raw = createClient({ url: process.env.AUTH_DB_URL! });
     const before = await raw.execute({
       sql: 'SELECT access_ciphertext FROM mcp_credentials WHERE user_id=? AND provider=?',
@@ -97,35 +96,6 @@ try {
       assert(err instanceof CredentialAuthError, `wrong error type: ${(err as Error).name}`);
       const msg = (err as Error).message;
       assert(msg.includes('tampered') || msg.includes('AAD'), 'has a clean explanation');
-    }
-  });
-
-  await test('expired row (past) -> ExpiredCredentialError', async () => {
-    await setCredential('expiry-past', 'notion', {
-      kind: 'oauth',
-      accessToken: 'ntn-stale',
-      expiresAt: Math.floor(Date.now() / 1000) - 100,
-    });
-    try {
-      await getOAuthAuthHeader('expiry-past', 'notion');
-      throw new Error('expected throw');
-    } catch (err) {
-      assert(err instanceof ExpiredCredentialError, `wrong error type: ${(err as Error).name}`);
-      assert((err as Error).message.includes('npm run connect'), 'has reconnect hint');
-    }
-  });
-
-  await test('expiring within cushion (next 60s) -> ExpiredCredentialError', async () => {
-    await setCredential('expiry-soon', 'notion', {
-      kind: 'oauth',
-      accessToken: 'ntn-soon',
-      expiresAt: Math.floor(Date.now() / 1000) + 30, // inside the 60s cushion
-    });
-    try {
-      await getOAuthAuthHeader('expiry-soon', 'notion');
-      throw new Error('expected throw');
-    } catch (err) {
-      assert(err instanceof ExpiredCredentialError, `wrong error type: ${(err as Error).name}`);
     }
   });
 

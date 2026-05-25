@@ -60,19 +60,28 @@ Run the test suites with `npm run test:auth` (store), `npm run test:tavily-auth`
 
 ## OAuth helper
 
-A small Hono server at `http://localhost:3000` handles OAuth flows for any provider registered in `src/auth/providers.ts`. **Notion** is registered out of the box (Phase 4) — others can be added by the same `registerProvider({...})` pattern.
+A small Hono server at `http://localhost:3000` handles OAuth flows for any provider registered in `src/auth/providers.ts`. **Notion** is registered out of the box — others can be added by the same `registerProvider({...})` pattern.
 
 ```shell
 # In one terminal: start the OAuth callback server (binds to 127.0.0.1)
 npm run oauth:serve
 
-# In another terminal: connect a provider — opens your browser to its consent screen
+# In another terminal: connect or disconnect a provider
 npm run connect -- --provider notion [--user <userId>]
+npm run disconnect -- --provider notion [--user <userId>]
 ```
 
-The server implements `GET /oauth/:provider/connect` (PKCE + state JWT + Dynamic Client Registration where supported → 302 to the provider's authorize endpoint) and `GET /oauth/:provider/callback` (verify state, exchange code+verifier for tokens, persist via the credential store as `kind=oauth`).
+`connect` opens the provider's consent screen in your default browser; on authorize, the callback writes an encrypted `kind=oauth` row to `auth.db`. `disconnect` POSTs to the provider's `revocation_endpoint` if it advertises one (best-effort — the local row is deleted either way) and removes the credential.
 
-Until Phase 5 lands automatic refresh, an expired OAuth token surfaces as an `ExpiredCredentialError` with a clear `npm run connect -- --provider X` hint.
+### Token lifecycle
+
+- **Transparent refresh.** When the resolver sees a credential within 60s of its expiry it calls `refreshOAuthToken(userId, provider)` under the hood — the next chat turn just works, no restart needed.
+- **Retry on 401.** Every MCP request is wrapped in `authedFetch`: if the server returns 401, the resolver force-refreshes once and retries. Useful when the provider invalidates a token earlier than the stated expiry.
+- **Hard failures surface cleanly.** `RefreshFailedError` (4xx from the token endpoint → row deleted) and `CannotRefreshError` (no `refresh_token` to use) both carry `npm run connect -- --provider X --user Y` as the actionable hint.
+
+### About `TOKEN_ENCRYPTION_KEY`
+
+This single env var is the master key for every row in `auth.db`. **If you lose it, every stored credential is unrecoverable** — `getCredential` will throw `CredentialAuthError` because GCM authentication tags won't validate. There is no recovery path other than deleting `auth.db` and reconnecting every provider. Rotate it intentionally (re-encrypt all rows) or treat it as immutable per environment.
 
 ## Learn more
 
